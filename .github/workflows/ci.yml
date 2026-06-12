@@ -1,0 +1,129 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Syntax check — todos os arquivos .py
+        run: |
+          find . -name "*.py" -not -path "./.venv/*" | xargs python -m py_compile
+          echo "Syntax check OK"
+
+      - name: Teste — lead_scorer
+        run: |
+          python -c "
+          import sys
+          sys.path.insert(0, '.')
+          from automation.lead_scorer import score_lead
+
+          # CEO com comportamentos fortes deve score > 70
+          lead_hot = {
+              'cargo': 'CEO',
+              'porte_empresa': 'enterprise',
+              'comportamentos': ['demo_solicitada', 'pagina_preco_visitada', 'case_lido'],
+              'tem_budget': True,
+              'empresa_setor': 'saude',
+          }
+          score = score_lead(lead_hot)
+          assert score > 70, f'CEO com comportamentos fortes deveria score > 70, obteve {score}'
+          print(f'CEO score: {score} > 70 OK')
+
+          # Lead sem dados deve score < 30
+          lead_cold = {}
+          score_zero = score_lead(lead_cold)
+          assert score_zero < 30, f'Lead sem dados deveria score < 30, obteve {score_zero}'
+          print(f'Lead vazio score: {score_zero} < 30 OK')
+
+          print('lead_scorer: PASSOU')
+          "
+
+      - name: Teste — funnel_router
+        run: |
+          python -c "
+          import sys
+          sys.path.insert(0, '.')
+          from automation.funnel_router import classificar_estagio
+
+          assert classificar_estagio(80) == 'hot', 'Score 80 deveria ser hot'
+          assert classificar_estagio(71) == 'hot', 'Score 71 deveria ser hot'
+          assert classificar_estagio(70) == 'warm', 'Score 70 deveria ser warm'
+          assert classificar_estagio(55) == 'warm', 'Score 55 deveria ser warm'
+          assert classificar_estagio(40) == 'warm', 'Score 40 deveria ser warm'
+          assert classificar_estagio(39) == 'cold', 'Score 39 deveria ser cold'
+          assert classificar_estagio(0) == 'cold', 'Score 0 deveria ser cold'
+
+          print('Score 80 -> hot OK')
+          print('Score 55 -> warm OK')
+          print('Score 20 -> cold OK')
+          print('funnel_router: PASSOU')
+          "
+
+      - name: Teste — email_personalizer
+        run: |
+          python -c "
+          import sys
+          sys.path.insert(0, '.')
+          from automation.email_personalizer import montar_prompt
+
+          lead = {
+              'nome': 'João Silva',
+              'cargo': 'CEO',
+              'empresa': 'TechCorp',
+              'porte_empresa': 'mid-market',
+              'empresa_setor': 'tecnologia',
+              'score': 85,
+              'comportamentos': ['demo_solicitada'],
+              'tem_budget': True,
+          }
+
+          for estagio in ['hot', 'warm', 'cold']:
+              prompt = montar_prompt(lead, estagio)
+              assert 'João Silva' in prompt, f'Prompt {estagio} deve conter nome do lead'
+              assert estagio.upper() in prompt.upper() or ('QUENTE' if estagio=='hot' else 'MORNO' if estagio=='warm' else 'FRIO') in prompt, \
+                  f'Prompt {estagio} deve indicar estágio'
+              print(f'Estágio {estagio}: nome e estágio presentes OK')
+
+          print('email_personalizer: PASSOU')
+          "
+
+      - name: Teste — campaign_builder
+        run: |
+          python -c "
+          import sys
+          sys.path.insert(0, '.')
+          from automation.campaign_builder import construir_campanha
+          from automation.funnel_router import SEQUENCIAS
+
+          lead = {
+              'nome': 'Maria Santos',
+              'email': 'maria@empresa.com',
+              'empresa': 'Empresa X',
+              'empresa_setor': 'saude',
+              'estagio': 'warm',
+              'score': 55,
+          }
+
+          campanha = construir_campanha(lead, SEQUENCIAS['warm'])
+          assert len(campanha['touchpoints']) >= 3, \
+              f'Campanha deve ter ao menos 3 touchpoints, obteve {len(campanha[\"touchpoints\"])}'
+          assert campanha['lead_nome'] == 'Maria Santos', 'Nome incorreto'
+          assert campanha['estagio'] == 'warm', 'Estágio incorreto'
+
+          print(f'Touchpoints: {len(campanha[\"touchpoints\"])} >= 3 OK')
+          print(f'Lead: {campanha[\"lead_nome\"]} OK')
+          print('campaign_builder: PASSOU')
+          "

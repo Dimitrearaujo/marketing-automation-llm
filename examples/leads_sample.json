@@ -1,0 +1,32 @@
+[
+  {
+    "nome": "Ana Souza",
+    "email": "ana.souza@clinicavida.com.br",
+    "cargo": "CEO",
+    "empresa": "Clínica Vida",
+    "porte_empresa": "smb",
+    "empresa_setor": "saude",
+    "comportamentos": ["demo_solicitada", "pagina_preco_visitada", "case_lido"],
+    "tem_budget": true
+  },
+  {
+    "nome": "Carlos Lima",
+    "email": "carlos.lima@academia360.com.br",
+    "cargo": "Gerente",
+    "empresa": "Academia 360",
+    "porte_empresa": "smb",
+    "empresa_setor": "fitness",
+    "comportamentos": ["email_aberto", "site_visitado"],
+    "tem_budget": false
+  },
+  {
+    "nome": "Mariana Rocha",
+    "email": "mariana@studioarte.com.br",
+    "cargo": "Analista",
+    "empresa": "Studio Arte",
+    "porte_empresa": "startup",
+    "empresa_setor": "educacao",
+    "comportamentos": [],
+    "tem_budget": false
+  }
+]
