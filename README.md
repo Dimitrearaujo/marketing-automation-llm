@@ -234,5 +234,255 @@ def sincronizar_rdstation(lead: dict, score: int):
 
 ## Desenvolvido por
 
-**CD Tech** — automação e agentes IA para pequenos negócios  
+**CD Tech** — automação e agentes IA para pequenos negócios
 Fortaleza CE | [dimitrearaujo@gmail.com](mailto:dimitrearaujo@gmail.com)
+
+---
+
+<details>
+<summary>🇺🇸 English</summary>
+
+# marketing-automation-llm
+
+[![CI](https://github.com/dimitrearaujo/marketing-automation-llm/actions/workflows/ci.yml/badge.svg)](https://github.com/dimitrearaujo/marketing-automation-llm/actions/workflows/ci.yml)
+
+LLM-powered marketing automation pipeline: lead scoring, email personalization and funnel-stage nurturing.
+
+Developed by **CD Tech** — AI automation and agents for small businesses.
+
+---
+
+## Pipeline Overview
+
+```
+Lead (JSON)
+    │
+    ▼
+[1] Lead Scorer        ← scores 0–100 by role, company and behavior
+    │
+    ▼
+[2] Funnel Router      ← classifies: cold / warm / hot + defines next action
+    │
+    ▼
+[3] Email Personalizer ← builds a prompt for the LLM to generate the right-tone email
+    │
+    ▼
+[4] Campaign Builder   ← sequence of touchpoints (email, WhatsApp, call)
+```
+
+All the business logic runs **without any API keys**. The LLM integration (Anthropic Claude) is optional and only used to generate the final email content.
+
+---
+
+## Project Structure
+
+```
+marketing-automation-llm/
+├── automation/
+│   ├── lead_scorer.py       # Lead scoring (0–100)
+│   ├── funnel_router.py     # cold/warm/hot classification
+│   ├── email_personalizer.py# Builds prompts for the LLM
+│   └── campaign_builder.py  # Touchpoint sequence
+├── examples/
+│   └── leads_sample.json    # 3 sample leads
+├── main.py                  # Full pipeline demo
+├── requirements.txt
+└── .env.example
+```
+
+---
+
+## Installation
+
+```bash
+git clone https://github.com/dimitrearaujo/marketing-automation-llm.git
+cd marketing-automation-llm
+python -m venv .venv
+.venv\Scripts\activate      # Windows
+# source .venv/bin/activate  # Linux/Mac
+pip install -r requirements.txt
+cp .env.example .env
+```
+
+---
+
+## Usage
+
+### Run the demonstration pipeline
+
+```bash
+python main.py
+```
+
+### Use the modules individually
+
+```python
+from automation.lead_scorer import score_lead
+from automation.funnel_router import rotear_lead
+from automation.email_personalizer import montar_prompt, montar_payload_llm
+from automation.campaign_builder import construir_campanha, resumo_campanha
+
+lead = {
+    "nome": "Ana Souza",
+    "email": "ana@clinica.com",
+    "cargo": "CEO",
+    "empresa": "Clínica Vida",
+    "porte_empresa": "smb",
+    "empresa_setor": "saude",
+    "comportamentos": ["demo_solicitada", "pagina_preco_visitada"],
+    "tem_budget": True,
+}
+
+# 1. Score
+lead["score"] = score_lead(lead)
+print(f"Score: {lead['score']}/100")
+
+# 2. Route
+routing = rotear_lead(lead)
+print(f"Stage: {routing['estagio']}")
+
+# 3. Generate email with the LLM (requires ANTHROPIC_API_KEY)
+import anthropic, os
+payload = montar_payload_llm(lead, routing["estagio"])
+client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+response = client.messages.create(**payload)
+print(response.content[0].text)
+
+# 4. Build the campaign
+campaign = construir_campanha(routing, routing["sequencia_completa"])
+print(resumo_campanha(campaign))
+```
+
+---
+
+## Sample Pipeline Output
+
+```
+============================================================
+  MARKETING AUTOMATION PIPELINE — CD Tech
+============================================================
+
+[1/4] Scoring leads...
+  - Ana Souza                score:  85/100
+  - Carlos Lima              score:  23/100
+  - Mariana Rocha            score:   9/100
+
+[2/4] Routing leads through the funnel...
+  - Ana Souza                stage:  HOT | next action: sales_call
+  - Carlos Lima              stage: COLD | next action: educational_email
+  - Mariana Rocha            stage: COLD | next action: educational_email
+
+[3/4] Generating personalized email prompts...
+  - Ana Souza                prompt: You are a B2B consultative sales specialist...
+  - Carlos Lima              prompt: You are an inbound marketing specialist...
+
+[4/4] Building campaigns...
+Campaign: camp_ana_souza_clinica_com
+Lead: Ana Souza (ana@clinica.com)
+Stage: HOT | Score: 85/100
+Total touchpoints: 4
+  1. [2026-06-12] PHONE — Urgent sales call — Ana Souza
+  2. [2026-06-13]   EMAIL — Personalized proposal for Clínica Vida — valid for 5 days
+  ...
+```
+
+---
+
+## Integration with n8n or Make (Webhook Trigger)
+
+Expose the pipeline as a webhook to receive leads automatically from forms, CRMs or ads.
+
+### n8n
+
+1. Create a **Webhook** node in n8n (POST method)
+2. Copy the generated URL to `WEBHOOK_URL` in `.env`
+3. In the next node, use **Execute Command** or **HTTP Request** to call `main.py` with the lead payload
+4. Or use the **Python** node (n8n Cloud) directly importing the modules
+
+```json
+// Expected webhook payload
+{
+  "nome": "John Smith",
+  "email": "john@company.com",
+  "cargo": "Director",
+  "empresa": "Company ABC",
+  "porte_empresa": "mid-market",
+  "empresa_setor": "technology",
+  "comportamentos": ["email_opened", "site_visited"],
+  "tem_budget": false
+}
+```
+
+### Make (Integromat)
+
+1. Create a scenario with a **Webhooks > Custom Webhook** trigger
+2. Add an **HTTP > Make a Request** module pointing to your server running the pipeline
+3. Map the form/CRM fields to the JSON payload above
+
+---
+
+## HubSpot / RD Station Integration
+
+### HubSpot
+
+```python
+import requests, os
+
+def sync_hubspot(lead: dict, score: int, stage: str):
+    url = "https://api.hubapi.com/crm/v3/objects/contacts"
+    headers = {
+        "Authorization": f"Bearer {os.environ['HUBSPOT_API_KEY']}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "properties": {
+            "email": lead["email"],
+            "firstname": lead["nome"].split()[0],
+            "lead_score": score,
+            "lifecyclestage": "lead" if stage == "cold" else "marketingqualifiedlead" if stage == "warm" else "salesqualifiedlead",
+        }
+    }
+    requests.post(url, json=payload, headers=headers)
+```
+
+### RD Station
+
+```python
+import requests, os
+
+def sync_rdstation(lead: dict, score: int):
+    url = f"https://api.rd.services/platform/contacts"
+    headers = {"Authorization": f"Bearer {os.environ['RD_STATION_TOKEN']}"}
+    payload = {
+        "email": lead["email"],
+        "name": lead["nome"],
+        "cf_lead_score": score,
+        "tags": [f"automation-llm"],
+    }
+    requests.post(url, json=payload, headers=headers)
+```
+
+---
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|-------------|-----------|
+| `ANTHROPIC_API_KEY` | Only for email generation | Anthropic API key |
+| `LLM_MODEL` | No | Claude model (default: `claude-opus-4-5`) |
+| `HUBSPOT_API_KEY` | No | HubSpot CRM integration |
+| `RD_STATION_TOKEN` | No | RD Station integration |
+| `WEBHOOK_URL` | No | Endpoint to receive leads via n8n/Make |
+
+---
+
+## Developed by
+
+**CD Tech** — AI automation and agents for small businesses
+Fortaleza, Brazil | [dimitrearaujo@gmail.com](mailto:dimitrearaujo@gmail.com)
+
+</details>
+
+---
+
+[← Back to profile](https://github.com/Dimitrearaujo)
