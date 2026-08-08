@@ -1,4 +1,4 @@
-# marketing-automation-llm
+# Marketing Automation with LLMs
 
 [![CI](https://github.com/dimitrearaujo/marketing-automation-llm/actions/workflows/ci.yml/badge.svg)](https://github.com/dimitrearaujo/marketing-automation-llm/actions/workflows/ci.yml)
 
@@ -242,7 +242,7 @@ Fortaleza, Brazil | [dimitrearaujo@gmail.com](mailto:dimitrearaujo@gmail.com)
 <details>
 <summary>🇧🇷 Português</summary>
 
-## marketing-automation-llm
+## Automacao de Marketing com LLMs
 
 [![CI](https://github.com/dimitrearaujo/marketing-automation-llm/actions/workflows/ci.yml/badge.svg)](https://github.com/dimitrearaujo/marketing-automation-llm/actions/workflows/ci.yml)
 
